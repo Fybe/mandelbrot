@@ -25,11 +25,14 @@ void HermiteSpline::build()
 		y.shrink_to_fit();
 	}
 
-	std::vector<float> slope(length - 1);
-	slope.shrink_to_fit();
+	if(length == 0)
+		return;
 
-	m.resize(length - 1);
-	m.shrink_to_fit();
+	std::vector<float> slope;
+	for(size_t i = 0; i < length - 1; i++)
+		slope.push_back(0);
+	for(size_t i = 0; i < length; i++)
+		m.push_back(0);
 
 	// slope of secant lines
 	for(size_t k = 0; k < length - 1; k++)
@@ -54,7 +57,7 @@ void HermiteSpline::build()
 	}
 
 	// check for monotonicity
-	for(size_t k = 1; k < length; k++)
+	for(size_t k = 1; k < length - 1; k++)
 	{
 		if((slope[k-1] < 0 && slope[k] > 0)
 			|| (slope[k-1] > 0 && slope[k] < 0))
@@ -70,6 +73,10 @@ void HermiteSpline::build()
 	// prevent overshooting
 	for(size_t k = 0; k < length - 1; k++)
 	{
+		if((slope[k-1] < 0 && slope[k] > 0)
+			|| (slope[k-1] > 0 && slope[k] < 0))
+			continue;
+
 		float a = m[k]/slope[k];
 		float b = m[k+1]/slope[k];
 
@@ -111,6 +118,11 @@ float HermiteSpline::h11(float t) const
 
 float HermiteSpline::operator()(float t) const
 {
+	if(x.size() == 0)
+		return 0;
+	if(x.size() == 1)
+		return y.front();
+
 	size_t k_lower = 0;
 	size_t k_upper = 0;
 

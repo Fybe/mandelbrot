@@ -35,9 +35,9 @@ void FractalGenerator::Render()
 			double real = re;
 			double imag = im;
 			
-			double rr;
-			double ii;
-			double ri;
+			double rr = 0;
+			double ii = 0;
+			double ri = 0;
 			// mandelbrot test per pixel
 			uint64_t i;
 			for(i = 0; i < iterations; i++)

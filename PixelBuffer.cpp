@@ -46,7 +46,7 @@ InternalPixelBuffer::InternalPixelBuffer(uint32_t bufferWidth, uint32_t bufferHe
 	}
 }
 InternalPixelBuffer::InternalPixelBuffer(InternalPixelBuffer const &other)
-	: PixelBuffer(other.GetWidth(), other.GetHeight())
+	: InternalPixelBuffer(other.GetWidth(), other.GetHeight())
 {
 	for(uint32_t x = 0; x < GetWidth(); x++)
 	{
@@ -64,6 +64,11 @@ InternalPixelBuffer::~InternalPixelBuffer()
 	}
 
 	delete[] buffer;
+}
+
+PixelBuffer *InternalPixelBuffer::clone() const
+{
+	return new InternalPixelBuffer(*this);
 }
 
 Pixel const &InternalPixelBuffer::GetPixel(uint32_t x, uint32_t y) const
@@ -85,8 +90,19 @@ SupersampledPixelBuffer::SupersampledPixelBuffer(uint32_t bufferWidth, uint32_t 
 	, originalBufferHeight(bufferHeight)
 {
 }
+SupersampledPixelBuffer::SupersampledPixelBuffer(SupersampledPixelBuffer const &other)
+	: InternalPixelBuffer(other)
+	, samplingFactor(other.samplingFactor)
+	, originalBufferWidth(other.originalBufferWidth)
+	, originalBufferHeight(other.originalBufferHeight)
+{}
 SupersampledPixelBuffer::~SupersampledPixelBuffer()
 {}
+
+PixelBuffer *SupersampledPixelBuffer::clone() const
+{
+	return new SupersampledPixelBuffer(*this);
+}
 
 float SupersampledPixelBuffer::GetSamplingFactor() const
 {
@@ -116,7 +132,7 @@ InternalPixelBuffer SupersampledPixelBuffer::GetSampledPixelBuffer() const
 				float x_weight;
 				
 				if(xs < xs_from)
-					x_weight = static_cast<float>(xs_from - xs) / (xs_to - xs_from);
+					x_weight = static_cast<float>(1 - (xs_from - xs)) / (xs_to - xs_from);
 				else if(xs > xs_to)
 					x_weight = static_cast<float>(xs - xs_to) / (xs_to - xs_from);
 				else
@@ -127,7 +143,7 @@ InternalPixelBuffer SupersampledPixelBuffer::GetSampledPixelBuffer() const
 					float y_weight;
 
 					if(ys < ys_from)
-						y_weight = static_cast<float>(ys_from - ys) / (ys_to - ys_from);
+						y_weight = static_cast<float>(1 - (ys_from - ys)) / (ys_to - ys_from);
 					else if(ys > ys_to)
 						y_weight = static_cast<float>(ys - ys_to) / (ys_to - ys_from);
 					else
