@@ -12,7 +12,71 @@ FractalGenerator::FractalGenerator(PixelBuffer *renderTarget, ColorGenerator con
 FractalGenerator::~FractalGenerator()
 {}
 
-void FractalGenerator::Render()
+void FractalGenerator::Render(size_t threads)
+{
+	std::list<std::thread> threadList;
+	for(size_t i = 0; i < threads; i++)
+	{
+		uint32_t xmin = i * renderTarget->GetWidth() / threads;
+		uint32_t xmax = (i+1) * renderTarget->GetWidth() / threads;
+
+		threadList.push_back(std::thread(&FractalGenerator::RenderPartially, this, xmin, xmax));
+	}
+
+	for(auto &T : threadList)
+	{
+		T.join();
+	}
+	//Float real_width = pow(10, -magnitude);
+	//Float x_min = c_real - real_width * 0.5;
+	//Float x_max = c_real + real_width * 0.5;
+
+	//Float real_height = real_width * renderTarget->GetHeight() / renderTarget->GetWidth();
+	//Float y_min = c_imag + real_height * 0.5;
+	//Float y_max = c_imag - real_height * 0.5;
+
+	//for(uint32_t x = 0; x < renderTarget->GetWidth(); x++)
+	//{
+	//	Float re = map(0, renderTarget->GetWidth(), x_min, x_max, x);
+	//	for(uint32_t y = 0; y < renderTarget->GetHeight(); y++)
+	//	{
+	//		Float im = map(0, renderTarget->GetHeight(), y_min, y_max, y);
+
+	//		Float real = re;
+	//		Float imag = im;
+	//		
+	//		Float rr = 0;
+	//		Float ii = 0;
+	//		Float ri = 0;
+	//		// mandelbrot test per pixel
+	//		uint64_t i;
+	//		for(i = 0; i < iterations; i++)
+	//		{
+	//			rr = real * real;
+	//			ii = imag * imag;
+	//			ri = real * imag;
+
+	//			real = rr - ii + re;
+	//			imag = 2*ri + im;
+
+	//			if(rr + ii > 4)
+	//				break;
+	//		}
+
+	//		if(i == iterations && rr + ii <= 4)
+	//			renderTarget->SetPixel(x, y, Pixel(0,0,0));
+	//		else
+	//			renderTarget->SetPixel(x, y, colorGenerator->ToPixel(real.toDouble(), imag.toDouble(), i));
+
+	//		progress = static_cast<float>(x * renderTarget->GetHeight() + y) / (renderTarget->GetWidth() * renderTarget->GetHeight());
+	//	}
+	//	progress = static_cast<float>((x+1) * renderTarget->GetHeight()) / (renderTarget->GetWidth() * renderTarget->GetHeight());
+	//}
+	mut.lock();
+	progress = 1.f;
+	mut.unlock();
+}
+void FractalGenerator::RenderPartially(uint32_t xmin, uint32_t xmax)
 {
 	Float real_width = pow(10, -magnitude);
 	Float x_min = c_real - real_width * 0.5;
@@ -22,7 +86,7 @@ void FractalGenerator::Render()
 	Float y_min = c_imag + real_height * 0.5;
 	Float y_max = c_imag - real_height * 0.5;
 
-	for(uint32_t x = 0; x < renderTarget->GetWidth(); x++)
+	for(uint32_t x = xmin; x < xmax; x++)
 	{
 		Float re = map(0, renderTarget->GetWidth(), x_min, x_max, x);
 		for(uint32_t y = 0; y < renderTarget->GetHeight(); y++)
@@ -55,11 +119,12 @@ void FractalGenerator::Render()
 			else
 				renderTarget->SetPixel(x, y, colorGenerator->ToPixel(real.toDouble(), imag.toDouble(), i));
 
-			progress = static_cast<float>(x * renderTarget->GetWidth() + y) / (renderTarget->GetWidth() * renderTarget->GetHeight());
+			mut.lock();
+			progress += 1.f / (renderTarget->GetHeight() * renderTarget->GetWidth());
+			//progress = static_cast<float>(x * renderTarget->GetHeight() + y) / (renderTarget->GetWidth() * renderTarget->GetHeight());
+			mut.unlock();
 		}
 	}
-
-	progress = 1.f;
 }
 
 void FractalGenerator::SetRenderTarget(PixelBuffer *renderTarget)

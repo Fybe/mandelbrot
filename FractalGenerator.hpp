@@ -2,6 +2,8 @@
 #define FRACTALGENERATOR_HPP
 #include <mutex>
 #include <cmath>
+#include <list>
+#include <thread>
 #include "mpreal.h"
 #include "PixelBuffer.hpp"
 #include "ColorGenerator.hpp"
@@ -15,7 +17,7 @@ public:
 	FractalGenerator(PixelBuffer *renderTarget, ColorGenerator const *colorGenerator);
 	~FractalGenerator();
 
-	void Render();
+	void Render(size_t threads = 1);
 
 	void SetRenderTarget(PixelBuffer *renderTarget);
 	void SetPoint(Float c_real, Float c_imag);
@@ -41,6 +43,7 @@ private:
 	float progress;
 	std::mutex mut;
 
+	void RenderPartially(uint32_t xmin, uint32_t xmax);
 	static Float map(Float f0, Float f1, Float t0, Float t1, Float x);
 };
 
