@@ -1,13 +1,13 @@
 CC=g++
 LD=g++
-CC_ARGS=-std=c++17 -Wall -Wextra -Wno-unused-parameter -I/usr/include/libpng16
-LD_ARGS=-lpng16
+CC_ARGS=-std=c++17 -Wall -Wextra -Wno-unused-parameter -I/usr/include/libpng16 -pthread -O3
+LD_ARGS=-lpng16 -pthread -lgmp -lmpfr -lboost_program_options
 
 
-.PHONY: all
+.PHONY: all clean
 all: mandelbrot
 
-mandelbrot: main.o PixelBuffer.o
+mandelbrot: main.o PixelBuffer.o ColorScheme.o Spline.o ColorGenerator.o FractalGenerator.o
 	$(LD) $(LD_ARGS) -o $@ $^
 
 main.o: main.cpp
@@ -16,8 +16,19 @@ main.o: main.cpp
 PixelBuffer.o: PixelBuffer.cpp PixelBuffer.hpp
 	$(CC) $(CC_ARGS) -o $@ -c $<
 
+ColorScheme.o: ColorScheme.cpp ColorScheme.hpp
+	$(CC) $(CC_ARGS) -o $@ -c $<
+
+Spline.o: Spline.cpp Spline.hpp
+	$(CC) $(CC_ARGS) -o $@ -c $<
+
+ColorGenerator.o: ColorGenerator.cpp ColorGenerator.hpp
+	$(CC) $(CC_ARGS) -o $@ -c $<
+
+FractalGenerator.o: FractalGenerator.cpp FractalGenerator.hpp
+	$(CC) $(CC_ARGS) -o $@ -c $<
+
 
 clean:
-	@rm main.o
-	@rm PixelBuffer.o
+	@rm *.o
 	@rm mandelbrot

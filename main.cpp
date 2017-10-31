@@ -1,4 +1,3 @@
-#include <gmpxx.h>
 #include <iostream>
 #include <list>
 #include <cstdint>
@@ -6,17 +5,44 @@
 #include <iomanip>
 #include <sstream>
 #include <thread>
+#include <boost/program_options.hpp>
 #include "FractalGenerator.hpp"
 
 using namespace std;
+namespace po = boost::program_options;
 
 
-void render_helper(ColorGradient *gradient, double mag_from, double mag_to, double time_per_mag, double fps, double real, double imag, size_t frame_min, size_t frame_max, size_t frame_skip);
+void render_helper(ColorGradient *gradient, Float mag_from, Float mag_to, Float time_per_mag, Float fps, Float real, Float imag, size_t frame_min, size_t frame_max, size_t frame_skip);
 
 
 int main(int argc, char **argv)
 {
-	cout.precision(4);
+	// parse parameter
+	po::positional_options_description p;
+	po::options_description desc("Allowed options");
+	desc.add_options()
+		("help,h",							"displays this help message")
+		("precision,p",							po::value<size_t>()->default_value(128),				"precision for floating-point calculation in bits")
+		("threads,t",							po::value<size_t>()->default_value(thread::hardware_concurrency()),				"number of threads used for rendering")
+		("real",						po::value<string>()->default_value("-0.5"),				"point on real axis")
+		("imag",						po::value<string>()->default_value("0"),				"point on imaginary axis")
+		("magnitude",		po::value<vector<string>>()->multitoken()->default_value({"-1", "-1"}),				"zoom level, beginning to ending")
+		("speed",						po::value<string>()->default_value("3.0"),				"zoom speed in seconds per magnitude")
+		("fps",							po::value<string>()->default_value("30"),				"frames per second for output video")
+		("gradient",					po::value<string>(),									"file containing gradient specifications")
+		;
+
+	po::variables_map vm;
+	po::store(po::command_line_parser(argc, argv).
+			options(desc).positional(p).run(), vm);
+	vm.notify();
+	
+
+	Float::set_default_prec(vm["precision"].as<size_t>());
+
+	cout.precision(2);
+	cout.setf(iostream::fixed);
+
 	MonotonicColorScheme scheme(std::vector<std::pair<float, Pixel>>{
 			std::pair<float, Pixel>(   0.0, Pixel(  0,   7, 100)),
 			std::pair<float, Pixel>(  0.16, Pixel( 32, 107, 203)),
@@ -27,16 +53,16 @@ int main(int argc, char **argv)
 	});
 	ColorGradient gradient(&scheme);
 
-	float mag_from = -1.f;
-	float mag_to = 60.f;
-	float time_per_mag = 2.5f;
-	float fps = 30.f;
-	size_t frames = fps * (mag_to - mag_from) * time_per_mag;
+	Float mag_from = vm["magnitude"].as<vector<string>>()[0];
+	Float mag_to = vm["magnitude"].as<vector<string>>()[1];
+	Float time_per_mag = vm["speed"].as<string>();
+	Float fps = vm["fps"].as<string>();
+	size_t frames = (fps * (mag_to - mag_from) * time_per_mag).toULong();
 
-	double c_real = -1.985540371654130485531439267191269851811165434636382820704394766801377;
-	double c_imag = +0.000000000000000000000000000001565120217211466101983496092509512479178;
+	Float c_real = vm["real"].as<string>();//"-1.985540371654130485531439267191269851811165434636382820704394766801377";
+	Float c_imag = vm["imag"].as<string>();//"+0.000000000000000000000000000001565120217211466101983496092509512479178";
 
-	size_t threads = 16;
+	size_t threads = vm["threads"].as<size_t>();
 
 	std::list<std::thread> T;
 
@@ -52,10 +78,9 @@ int main(int argc, char **argv)
 }
 
 
-
-void render_helper(ColorGradient *gradient, double mag_from, double mag_to, double time_per_mag, double fps, double real, double imag, size_t frame_min, size_t frame_max, size_t frame_skip)
+void render_helper(ColorGradient *gradient, Float mag_from, Float mag_to, Float time_per_mag, Float fps, Float real, Float imag, size_t frame_min, size_t frame_max, size_t frame_skip)
 {
-	size_t frames = fps * (mag_to - mag_from) * time_per_mag;
+	size_t frames = (fps * (mag_to - mag_from) * time_per_mag).toULong();
 
 	InternalPixelBuffer *buf = new InternalPixelBuffer(1280, 720);
 	for(size_t frame = frame_min; frame < frame_max; frame += frame_skip)
@@ -63,7 +88,7 @@ void render_helper(ColorGradient *gradient, double mag_from, double mag_to, doub
 		FractalGenerator gen(buf, gradient);
 
 		gen.SetPoint(real, imag);
-		double mag = mag_from + static_cast<double>(mag_to-mag_from) * frame / frames;
+		Float mag = mag_from + static_cast<Float>(mag_to-mag_from) * frame / frames;
 		gen.SetMagnitude(mag);
 		gen.SetIterations(1ul << 8ul);
 		auto beg = chrono::high_resolution_clock::now();

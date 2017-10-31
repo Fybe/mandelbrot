@@ -1,9 +1,13 @@
 #ifndef FRACTALGENERATOR_HPP
 #define FRACTALGENERATOR_HPP
 #include <mutex>
+#include <cmath>
+#include "mpreal.h"
 #include "PixelBuffer.hpp"
 #include "ColorGenerator.hpp"
 
+using namespace mpfr;
+typedef mpreal Float;
 
 class FractalGenerator
 {
@@ -14,13 +18,13 @@ public:
 	void Render();
 
 	void SetRenderTarget(PixelBuffer *renderTarget);
-	void SetPoint(double c_real, double c_imag);
-	void SetMagnitude(double magnitude);
+	void SetPoint(Float c_real, Float c_imag);
+	void SetMagnitude(Float magnitude);
 	void SetIterations(uint64_t iterations);
 
-	double GetReal() const;
-	double GetImag() const;
-	double GetMagnitude() const;
+	Float GetReal() const;
+	Float GetImag() const;
+	Float GetMagnitude() const;
 	uint64_t GetIterations() const;
 	PixelBuffer const &GetPixelBuffer() const;
 
@@ -29,15 +33,15 @@ public:
 private:
 	PixelBuffer *renderTarget;
 	ColorGenerator *colorGenerator;
-	double c_real;
-	double c_imag;
-	double magnitude;
+	Float c_real;
+	Float c_imag;
+	Float magnitude;
 	uint64_t iterations;
 
 	float progress;
 	std::mutex mut;
 
-	static double map(double f0, double f1, double t0, double t1, double x);
+	static Float map(Float f0, Float f1, Float t0, Float t1, Float x);
 };
 
 #endif
