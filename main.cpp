@@ -12,9 +12,6 @@ using namespace std;
 namespace po = boost::program_options;
 
 
-void render_helper(ColorGradient *gradient, Float mag_from, Float mag_to, Float time_per_mag, Float fps, Float real, Float imag, size_t frame_min, size_t frame_max, size_t frame_skip, uint64_t iterations, string filename);
-
-
 int main(int argc, char **argv)
 {
 	cout.precision(2);
@@ -38,6 +35,7 @@ int main(int argc, char **argv)
 		("gradient",					po::value<string>(),									"file containing gradient specifications")
 		("mode",						po::value<string>()->default_value("single"),			"valid options: single, zoom")
 		("output,O",					po::value<string>()->default_value("output/image%05d.png"), "output file, %05d for numbering")
+		("size",						po::value<vector<uint32_t>>()->multitoken()->default_value(vector<uint32_t>(), ""),	"width and height in pixels")
 		;
 
 	po::variables_map vm;
@@ -66,6 +64,18 @@ int main(int argc, char **argv)
 	Float c_real = vm["real"].as<string>();//"-1.985540371654130485531439267191269851811165434636382820704394766801377";
 	Float c_imag = vm["imag"].as<string>();//"+0.000000000000000000000000000001565120217211466101983496092509512479178";
 
+	uint32_t width, height;
+	if(vm["size"].as<vector<uint32_t>>().size() != 2)
+	{
+		width = 1280u;
+		height = 720u;
+	}
+	else
+	{
+		width = vm["size"].as<vector<uint32_t>>()[0];
+		height = vm["size"].as<vector<uint32_t>>()[1];
+	}
+
 	if(vm["mode"].as<string>() == "zoom")
 	{
 		Float mag_from = vm["magnitude"].as<vector<string>>()[0];
@@ -74,22 +84,35 @@ int main(int argc, char **argv)
 		Float fps = vm["fps"].as<string>();
 		size_t frames = (fps * (mag_to - mag_from) * time_per_mag).toULong();
 
-		size_t threads = vm["threads"].as<size_t>();
-		std::list<std::thread> T;
-
-		for(size_t i = 0; i < threads; i++)
+		InternalPixelBuffer *buf = new InternalPixelBuffer(width, height);
+		for(size_t frame = 0; frame < frames; frame++)
 		{
-			T.push_back(thread(&render_helper, &gradient, mag_from, mag_to, time_per_mag, fps, c_real, c_imag, i, frames, threads, vm["iterations"].as<uint64_t>(), vm["output"].as<string>()));
-		}
+			FractalGenerator gen(buf, &gradient);
 
-		for(auto &t : T)
-			t.join();
+			gen.SetPoint(c_real, c_imag);
+			Float mag = mag_from + static_cast<Float>(mag_to-mag_from) * frame / frames;
+			gen.SetMagnitude(mag);
+			gen.SetIterations(vm["iterations"].as<uint64_t>());
+			auto beg = chrono::high_resolution_clock::now();
+			gen.Render(vm["threads"].as<size_t>());
+			auto end = chrono::high_resolution_clock::now();
+
+			char cbuf[100];
+			snprintf(cbuf, sizeof(cbuf), vm["output"].as<string>().c_str(), frame);
+			buf->WriteToFile(cbuf);
+
+			stringstream ss = stringstream();
+			ss << "frame " << frame << " of " << frames << " rendered in " << chrono::duration_cast<chrono::milliseconds>(end-beg).count()/1000.f << "s" << endl;
+			cout << ss.str();
+			cout.flush();
+		}
+		delete buf;
 	}
 	else if(vm["mode"].as<string>() == "single")
 	{
 		Float mag = vm["magnitude"].as<vector<string>>()[0];
 
-		InternalPixelBuffer *buf = new InternalPixelBuffer(1280, 720);
+		InternalPixelBuffer *buf = new InternalPixelBuffer(width, height);
 		FractalGenerator gen(buf, &gradient);
 		gen.SetPoint(c_real, c_imag);
 		gen.SetMagnitude(mag);
@@ -173,34 +196,4 @@ int main(int argc, char **argv)
 	}
 
 	return 0;
-}
-
-
-void render_helper(ColorGradient *gradient, Float mag_from, Float mag_to, Float time_per_mag, Float fps, Float real, Float imag, size_t frame_min, size_t frame_max, size_t frame_skip, uint64_t iterations, string filename)
-{
-	size_t frames = (fps * (mag_to - mag_from) * time_per_mag).toULong();
-
-	InternalPixelBuffer *buf = new InternalPixelBuffer(1280, 720);
-	for(size_t frame = frame_min; frame < frame_max; frame += frame_skip)
-	{
-		FractalGenerator gen(buf, gradient);
-
-		gen.SetPoint(real, imag);
-		Float mag = mag_from + static_cast<Float>(mag_to-mag_from) * frame / frames;
-		gen.SetMagnitude(mag);
-		gen.SetIterations(iterations);
-		auto beg = chrono::high_resolution_clock::now();
-		gen.Render();
-		auto end = chrono::high_resolution_clock::now();
-
-		char cbuf[100];
-		snprintf(cbuf, sizeof(cbuf), filename.c_str(), frame);
-		buf->WriteToFile(cbuf);
-
-		stringstream ss = stringstream();
-		ss << "frame " << frame << " of " << frames << " rendered in " << chrono::duration_cast<chrono::milliseconds>(end-beg).count()/1000.f << "s" << endl;
-		cout << ss.str();
-		cout.flush();
-	}
-	delete buf;
 }

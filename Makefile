@@ -1,7 +1,7 @@
 CC=g++
 LD=g++
-CC_ARGS=-std=c++17 -Wall -Wextra -Wno-unused-parameter -I/usr/include/libpng16 -pthread -O3
-LD_ARGS=-lpng16 -pthread -lgmp -lmpfr -lboost_program_options
+CC_ARGS=-std=c++17 -Wall -Wextra -Wno-unused-parameter -I/usr/include/libpng16 -O3
+LD_ARGS=-pthread -lpng16 -lgmp -lmpfr -lboost_program_options
 
 
 .PHONY: all clean
